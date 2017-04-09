@@ -47,12 +47,13 @@ services:
 
 ## usage
 
-For each backend service you have - there are 3 env variables:
+For each backend service you have - there are 4 env variables:
  
  * `NOXY_XXX_FRONT` - the incoming route to match (anything below this will also match)
  * `NOXY_XXX_HOST` - the hostname for the service
  * `NOXY_XXX_PORT` - the port for the service (default = 80)
  * `NOXY_XXX_BACK` - map the frontend route onto the backend route
+ * `NOXY_XXX_WS` - enable websockets for this backend
 
 #### FRONT
 
@@ -81,6 +82,15 @@ If you provide a BACK setting - the frontend setting will be replaced by it for 
 For example a `GET /reviews/v1/123` would result in a `GET /custombackendpath/123` to our reviews service.
 
 If you don't provide a BACK option - the bnackend url will be the same as the incoming request.
+
+#### WS (optional)
+
+If this is set to a truthy value, the following headers will be added to the nginx location block:
+
+```
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection "upgrade";
+```
 
 #### NOXY_DEFAULT_HOST
 

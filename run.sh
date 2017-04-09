@@ -18,6 +18,21 @@ function get_service_var() {
   eval 'echo ${NOXY_'$1'_'$2'}'
 }
 
+function get_proxy_config() {
+  cat<<end-of-proxy-config
+      proxy_redirect     off;
+      proxy_set_header Connection '';
+      proxy_http_version 1.1;
+      chunked_transfer_encoding off;
+      proxy_buffering off;
+      proxy_cache off;
+      proxy_set_header   Host \$host;
+      proxy_set_header   X-Real-IP \$remote_addr;
+      proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+      proxy_set_header   X-Forwarded-Host \$server_name;
+end-of-proxy-config
+}
+
 # append to the temp file for the backends section
 function add_upstream_def() {
   local service="$1"
@@ -35,16 +50,13 @@ end-of-upstream-config
 function add_normal_server_def() {
   local service="$1"
   local front="$2"
+  local proxyConfig=$(get_proxy_config)
 
   cat<<end-of-server-config >> ${SERVER_TEMP_FILE}
     location $front {
 
       proxy_pass         http://${service}_servers;
-      proxy_redirect     off;
-      proxy_set_header   Host \$host;
-      proxy_set_header   X-Real-IP \$remote_addr;
-      proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
-      proxy_set_header   X-Forwarded-Host \$server_name;
+      ${proxyConfig}
 
     }
 
@@ -56,6 +68,16 @@ function add_mapped_server_def() {
   local service="$1"
   local front="$2"
   local back="$3"
+  local ws="$4"
+  local proxyConfig=$(get_proxy_config)
+  local wsConfig=''
+
+  if [ -n "${ws}" ]; then
+cat<<end-of-ws-config >> ${wsConfig}
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "upgrade";
+end-of-ws-config
+  fi
 
   # remove trailing slashes
   front=$(echo "${front}" | sed -E "s/\/$//")
@@ -65,11 +87,8 @@ function add_mapped_server_def() {
     location ${front}/ {
 
       proxy_pass         http://${service}_servers${back}/;
-      proxy_redirect     off;
-      proxy_set_header   Host \$host;
-      proxy_set_header   X-Real-IP \$remote_addr;
-      proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
-      proxy_set_header   X-Forwarded-Host \$server_name;
+      ${proxyConfig}
+      ${wsConfig}
 
     }
 
@@ -82,6 +101,7 @@ function process_service() {
   local front=$(get_service_var $service FRONT)
   local back=$(get_service_var $service BACK)
   local port=$(get_service_var $service PORT)
+  local ws=$(get_service_var $service WS)
   
 
   if [ -z "${port}" ]; then port=80; fi
@@ -107,7 +127,7 @@ function process_service() {
   add_upstream_def "${service}" "${server}"
 
   if [ -n "${back}" ]; then
-      add_mapped_server_def "${service}" "${front}" "${back}"
+      add_mapped_server_def "${service}" "${front}" "${back}" "${ws}"
   else
       add_normal_server_def "${service}" "${front}"
   fi    
