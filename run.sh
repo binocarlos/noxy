@@ -33,6 +33,16 @@ function get_proxy_config() {
 end-of-proxy-config
 }
 
+function get_ws_config() {
+  local ws="$1"
+  if [ -n "${ws}" ]; then
+    cat<<end-of-ws-config
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "upgrade";
+end-of-ws-config
+  fi
+}
+
 # append to the temp file for the backends section
 function add_upstream_def() {
   local service="$1"
@@ -50,13 +60,16 @@ end-of-upstream-config
 function add_normal_server_def() {
   local service="$1"
   local front="$2"
+  local ws="$3"
   local proxyConfig=$(get_proxy_config)
+  local wsConfig=$(get_ws_config "${ws}")
 
   cat<<end-of-server-config >> ${SERVER_TEMP_FILE}
     location $front {
 
       proxy_pass         http://${service}_servers;
       ${proxyConfig}
+      ${wsConfig}
 
     }
 
@@ -70,14 +83,7 @@ function add_mapped_server_def() {
   local back="$3"
   local ws="$4"
   local proxyConfig=$(get_proxy_config)
-  local wsConfig=''
-
-  if [ -n "${ws}" ]; then
-cat<<end-of-ws-config >> ${wsConfig}
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection "upgrade";
-end-of-ws-config
-  fi
+  local wsConfig=$(get_ws_config "${ws}")
 
   # remove trailing slashes
   front=$(echo "${front}" | sed -E "s/\/$//")
@@ -122,6 +128,7 @@ function process_service() {
     echo "  port: $port"
     echo "  front: $front"
     echo "  back: $back"
+    echo "  ws: $ws"
   fi
 
   add_upstream_def "${service}" "${server}"
@@ -129,7 +136,7 @@ function process_service() {
   if [ -n "${back}" ]; then
       add_mapped_server_def "${service}" "${front}" "${back}" "${ws}"
   else
-      add_normal_server_def "${service}" "${front}"
+      add_normal_server_def "${service}" "${front}" "${ws}"
   fi    
 }
 
