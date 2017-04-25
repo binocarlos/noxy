@@ -4,9 +4,11 @@ set -e
 
 UPSTREAM_TEMP_FILE="/tmp/noxy_upstreams"
 SERVER_TEMP_FILE="/tmp/noxy_servers"
+REDIRECT_TEMP_FILE="/tmp/noxy_redirects"
 
 echo '' > ${UPSTREAM_TEMP_FILE}
 echo '' > ${SERVER_TEMP_FILE}
+echo '' > ${REDIRECT_TEMP_FILE}
 
 # NOXY_PRODUCTS_HOST -> PRODUCTS
 function extract_servicename() {
@@ -101,6 +103,22 @@ function add_mapped_server_def() {
 end-of-server-config
 }
 
+# abc.com/something/else.html -> xyz.com/something/else.html
+function add_redirect_server_def() {
+  local service="$1"
+  local host="$2"
+  local redirect="$3"
+
+  cat<<end-of-redirect-config >> ${REDIRECT_TEMP_FILE}
+    server {
+        listen        80;
+        server_name ${host};
+        return 301 ${redirect}\$request_uri;
+    }
+
+end-of-redirect-config
+}
+
 function process_service() {
   local service="$1"
   local host=$(get_service_var $service HOST)
@@ -108,7 +126,12 @@ function process_service() {
   local back=$(get_service_var $service BACK)
   local port=$(get_service_var $service PORT)
   local ws=$(get_service_var $service WS)
+  local redirect=$(get_service_var $service REDIRECT)
   
+  if [ -n "${redirect}" ]; then
+    add_redirect_server_def "${service}" "${host}" "${redirect}"
+    return
+  fi
 
   if [ -z "${port}" ]; then port=80; fi
   if [ "${service}" == "DEFAULT" ]; then
@@ -134,19 +157,19 @@ function process_service() {
   add_upstream_def "${service}" "${server}"
 
   if [ -n "${back}" ]; then
-      add_mapped_server_def "${service}" "${front}" "${back}" "${ws}"
+    add_mapped_server_def "${service}" "${front}" "${back}" "${ws}"
   else
-      add_normal_server_def "${service}" "${front}" "${ws}"
+    add_normal_server_def "${service}" "${front}" "${ws}"
   fi    
 }
 
 # ensure we have a default host
-function check_vars() {
-  if [ -z "${NOXY_DEFAULT_HOST}" ]; then
-    echo >&2 "NOXY_DEFAULT_HOST var required"
-    exit 1
-  fi
-}
+#function check_vars() {
+  #if [ -z "${NOXY_DEFAULT_HOST}" ]; then
+  #  echo >&2 "NOXY_DEFAULT_HOST var required"
+  #  exit 1
+  #fi
+#}
 
 # loop over the env
 function process_vars() {
@@ -167,8 +190,9 @@ function process_var() {
 function write_nginx_config() {
   local upstream_defs=$(cat ${UPSTREAM_TEMP_FILE})
   local server_defs=$(cat ${SERVER_TEMP_FILE})
+  local redirect_defs=$(cat ${REDIRECT_TEMP_FILE})
 
-  rm ${UPSTREAM_TEMP_FILE} ${SERVER_TEMP_FILE}
+  rm ${UPSTREAM_TEMP_FILE} ${SERVER_TEMP_FILE} ${REDIRECT_TEMP_FILE}
   cat<<end-of-nginx-config > /etc/nginx/nginx.conf
 worker_processes 1;
 daemon off;
@@ -197,12 +221,14 @@ http {
 
     ${server_defs}
   }
+
+  ${redirect_defs}
 }
 end-of-nginx-config
 }
 
 function main() {
-  check_vars
+  #check_vars
   process_vars
   write_nginx_config
 

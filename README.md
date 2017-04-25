@@ -42,6 +42,8 @@ services:
       NOXY_REVIEWS_HOST: reviews
       NOXY_REVIEWS_PORT: 8273
       NOXY_REVIEWS_BACK: /custombackendpath
+      # enable websockets for this virtual host
+      NOXY_REVIEWS_WS: 1
       NOXY_DEFAULT_HOST: webserver
 ```
 
@@ -51,6 +53,7 @@ For each backend service you have - there are 4 env variables:
  
  * `NOXY_XXX_FRONT` - the incoming route to match (anything below this will also match)
  * `NOXY_XXX_HOST` - the hostname for the service
+ * `NOXY_XXX_REDIRECT` - means all routes will get a 302 redirect to here
  * `NOXY_XXX_PORT` - the port for the service (default = 80)
  * `NOXY_XXX_BACK` - map the frontend route onto the backend route
  * `NOXY_XXX_WS` - enable websockets for this backend
@@ -91,6 +94,21 @@ If this is set to a truthy value, the following headers will be added to the ngi
 proxy_set_header Upgrade $http_upgrade;
 proxy_set_header Connection "upgrade";
 ```
+
+#### REDIRECT (optional)
+
+This changes the meaning of the virtual host entry from `proxy requests to this backend` to `redirect requests to this other host`.
+
+The `HOST` property is used as the hostname for the server and the `REDIRECT` value is used as the target redirect.
+
+For example - to redirect any incoming request for `abc.com` to `xyz.con`:
+
+```
+NOXY_ABC_HOST: abc.com
+NOXY_ABC_REDIRECT: http://xyz.com
+```
+
+You **must** include `http://` or `https://` in the redirect value - this lets you use noxy as a HTTPS redirector.
 
 #### NOXY_DEFAULT_HOST
 
