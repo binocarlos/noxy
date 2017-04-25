@@ -128,6 +128,17 @@ function process_service() {
   local ws=$(get_service_var $service WS)
   local redirect=$(get_service_var $service REDIRECT)
   
+
+  if [ -n "${DEBUG}" ]; then
+    echo "service $service - $server"
+    echo "  host: $host"
+    echo "  port: $port"
+    echo "  front: $front"
+    echo "  back: $back"
+    echo "  ws: $ws"
+    echo "  redirect: $redirect"
+  fi
+
   if [ -n "${redirect}" ]; then
     add_redirect_server_def "${service}" "${host}" "${redirect}"
     return
@@ -145,14 +156,6 @@ function process_service() {
 
   local server="${host}:${port}"
 
-  if [ -n "${DEBUG}" ]; then
-    echo "service $service - $server"
-    echo "  host: $host"
-    echo "  port: $port"
-    echo "  front: $front"
-    echo "  back: $back"
-    echo "  ws: $ws"
-  fi
 
   add_upstream_def "${service}" "${server}"
 
@@ -181,7 +184,7 @@ function process_vars() {
 # process a single var
 function process_var() {
   local i="$1"
-  if [[ "$i" =~ ^NOXY_[A-Z]+_HOST ]]; then
+  if [[ "$i" =~ ^NOXY_[A-Z_]+_HOST ]]; then
     local service=$(extract_servicename $i)
     process_service $service
   fi
@@ -215,6 +218,8 @@ http {
 
   ${upstream_defs}
 
+  ${redirect_defs}
+
   server {
       
     listen 80;
@@ -222,7 +227,7 @@ http {
     ${server_defs}
   }
 
-  ${redirect_defs}
+  
 }
 end-of-nginx-config
 }
