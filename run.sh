@@ -6,6 +6,8 @@ UPSTREAM_TEMP_FILE="/tmp/noxy_upstreams"
 SERVER_TEMP_FILE="/tmp/noxy_servers"
 REDIRECT_TEMP_FILE="/tmp/noxy_redirects"
 
+AUTH_FOLDER="/etc/noxy_auth"
+
 echo '' > ${UPSTREAM_TEMP_FILE}
 echo '' > ${SERVER_TEMP_FILE}
 echo '' > ${REDIRECT_TEMP_FILE}
@@ -46,6 +48,24 @@ end-of-ws-config
   fi
 }
 
+function get_auth_config() {
+  local service="$1"
+  local username="$2"
+  local password="$3"
+
+  if [[ -n "${authUsername}" && -n "${authPassword}" ]]; then
+    mkdir -p "${AUTH_FOLDER}"
+    local authFile="${AUTH_FOLDER}/${service}"
+    $(htpasswd -b -c "${authFile}" "${username}" "${password}")
+    cat<<end-of-auth-config
+      auth_basic           "password protected";
+      auth_basic_user_file ${authFile};
+end-of-auth-config
+  else
+    echo ""
+  fi
+}
+
 # append to the temp file for the backends section
 function add_upstream_def() {
   local service="$1"
@@ -64,8 +84,11 @@ function add_normal_server_def() {
   local service="$1"
   local front="$2"
   local ws="$3"
+  local authUsername="$4"
+  local authPassword="$5"
   local proxyConfig=$(get_proxy_config)
   local wsConfig=$(get_ws_config "${ws}")
+  local authConfig=$(get_auth_config "${service}" "${authUsername}" "${authPassword}")
 
   cat<<end-of-server-config >> ${SERVER_TEMP_FILE}
     location $front {
@@ -73,6 +96,7 @@ function add_normal_server_def() {
       proxy_pass         http://${service}_servers;
       ${proxyConfig}
       ${wsConfig}
+      ${authConfig}
 
     }
 
@@ -85,8 +109,11 @@ function add_mapped_server_def() {
   local front="$2"
   local back="$3"
   local ws="$4"
+  local authUsername="$5"
+  local authPassword="$6"
   local proxyConfig=$(get_proxy_config)
   local wsConfig=$(get_ws_config "${ws}")
+  local authConfig=$(get_auth_config "${service}" "${authUsername}" "${authPassword}")
 
   # remove trailing slashes
   front=$(echo "${front}" | sed -E "s/\/$//")
@@ -98,6 +125,7 @@ function add_mapped_server_def() {
       proxy_pass         http://${service}_servers${back}/;
       ${proxyConfig}
       ${wsConfig}
+      ${authConfig}
 
     }
 
@@ -128,6 +156,8 @@ function process_service() {
   local port=$(get_service_var $service PORT)
   local ws=$(get_service_var $service WS)
   local redirect=$(get_service_var $service REDIRECT)
+  local authUsername=$(get_service_var $service BASIC_AUTH_USERNAME)
+  local authPassword=$(get_service_var $service BASIC_AUTH_PASSWORD)
   
 
   if [ -n "${DEBUG}" ]; then
@@ -138,6 +168,10 @@ function process_service() {
     echo "  back: $back"
     echo "  ws: $ws"
     echo "  redirect: $redirect"
+
+    if [[ -n "${authUsername}" && -n "${authPassword}" ]]; then
+      echo "  basic auth username: $authUsername"
+    fi
   fi
 
   if [ -n "${redirect}" ]; then
@@ -161,9 +195,9 @@ function process_service() {
   add_upstream_def "${service}" "${server}"
 
   if [ -n "${back}" ]; then
-    add_mapped_server_def "${service}" "${front}" "${back}" "${ws}"
+    add_mapped_server_def "${service}" "${front}" "${back}" "${ws}" "${authUsername}" "${authPassword}"
   else
-    add_normal_server_def "${service}" "${front}" "${ws}"
+    add_normal_server_def "${service}" "${front}" "${ws}" "${authUsername}" "${authPassword}"
   fi    
 }
 
