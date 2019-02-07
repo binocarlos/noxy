@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  router:
+    build:
+      context: .
+    container_name: router
+    ports:
+      - 80:80
+    restart: always
+    depends_on:
+      - test1
+      - test2
+    environment:
+      - NOXY_DEFAULT_HOST=test1
+      - NOXY_DEFAULT_PORT=80
+      - NOXY_TEST_HOST=test2
+      - NOXY_TEST_PORT=80
+      - NOXY_TEST_FRONT=/test2
+      - NOXY_TEST_BACK=/
+  test1:
+    image: nginx
+    container_name: test1
+    volumes:
+      - ./index.test-1.html:/usr/share/nginx/html/index.html
+  test2:
+    image: nginx
+    container_name: test2
+    volumes:
+      - ./index.test-2.html:/usr/share/nginx/html/index.html
+  
