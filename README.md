@@ -42,6 +42,8 @@ services:
       NOXY_REVIEWS_HOST: reviews
       NOXY_REVIEWS_PORT: 8273
       NOXY_REVIEWS_BACK: /custombackendpath
+      NOXY_REVIEWS_BASIC_AUTH_USERNAME: admin
+      NOXY_REVIEWS_BASIC_AUTH_PASSWORD: apples
       # enable websockets for this virtual host
       NOXY_REVIEWS_WS: 1
       NOXY_DEFAULT_HOST: webserver
@@ -57,6 +59,8 @@ For each backend service you have - there are 4 env variables:
  * `NOXY_XXX_PORT` - the port for the service (default = 80)
  * `NOXY_XXX_BACK` - map the frontend route onto the backend route
  * `NOXY_XXX_WS` - enable websockets for this backend
+ * `NOXY_XXX_BASIC_AUTH_USERNAME` - activate basic auth for this route using the given username
+ * `NOXY_XXX_BASIC_AUTH_PASSWORD` - activate basic auth for this route using the given password
 
 #### FRONT
 
@@ -109,6 +113,10 @@ NOXY_ABC_REDIRECT: http://xyz.com
 ```
 
 You **must** include `http://` or `https://` in the redirect value - this lets you use noxy as a HTTPS redirector.
+
+#### BASIC_AUTH_{USERNAME,PASSWORD} (optional)
+
+Providing both of these values for a group will activate basic authentication for the route
 
 #### NOXY_DEFAULT_HOST
 
