@@ -29,7 +29,7 @@ services:
       context: ./webserver
   # the router config
   router:
-    image: binocarlos/noxy
+    image: binocarlos/noxy:v3
     links:
       - products:products
       - reviews:reviews
