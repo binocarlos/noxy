@@ -35,6 +35,9 @@ function get_proxy_config() {
       proxy_set_header   X-Real-IP \$remote_addr;
       proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
       proxy_set_header   X-Forwarded-Host \$server_name;
+      proxy_connect_timeout   180;
+      proxy_send_timeout      180;
+      proxy_read_timeout      180;
 end-of-proxy-config
 }
 
