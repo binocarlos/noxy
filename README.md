@@ -124,6 +124,9 @@ You **must** provide a `NOXY_DEFAULT_HOST` setting - this is the service to whic
 
 The `FRONT` and `BACK` settings are ignored - it is usually the case you use your static webserver as the default route.
 
+## change the port of noxy itself
+
+To make noxy itself (nginx) listen on a different port, set `NOXY_PORT`. It defaults to 80.
 
 ## debug
 
