@@ -263,7 +263,7 @@ http {
 
   server {
       
-    listen 80;
+    listen ${NOXY_PORT:-80};
 
     ${server_defs}
   }
