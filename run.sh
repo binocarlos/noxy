@@ -225,7 +225,7 @@ function process_vars() {
 # process a single var
 function process_var() {
   local i="$1"
-  if [[ "$i" =~ ^NOXY_[A-Z_]+_HOST ]]; then
+  if [[ "$i" =~ ^NOXY_[0-9A-Z_]+_HOST ]]; then
     local service=$(extract_servicename $i)
     process_service $service
   fi
